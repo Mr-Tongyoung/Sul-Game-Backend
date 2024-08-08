@@ -6,16 +6,22 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.sejong.sulgamewiki.common.entity.BaseMember;
+import org.sejong.sulgamewiki.common.entity.constants.MemberRole;
 import org.sejong.sulgamewiki.member.domain.constants.MemberStatus;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.sejong.sulgamewiki.member.dto.request.MemberDto;
+import org.sejong.sulgamewiki.member.dto.request.CompleteRegistrationRequest;
+import org.sejong.sulgamewiki.member.dto.request.CreateMemberRequest;
 
+@ToString
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @SuperBuilder
@@ -27,16 +33,12 @@ public class Member extends BaseMember {
 
   private String university;
 
-  // 근데 이거 유니버시티가 필수가 아닌데 얘는 필수면 어캄. 확인하는거 하나 필요할듯
-  @Column(nullable = false)
-  private boolean isUniversityVisible;
+  private Boolean isUniversityVisible;
 
   @Enumerated(EnumType.STRING)
   private MemberStatus status;
 
-  @Builder.Default
-  @Column(nullable = false)
-  private Boolean isNotificationsEnabled = true;
+  private Boolean isNotiEnabled;
 
   @ElementCollection
   @CollectionTable(name = "member_popular_game_stars", joinColumns = @JoinColumn(name = "member_id"))
@@ -56,15 +58,27 @@ public class Member extends BaseMember {
   @Builder.Default
   private List<String> favoriteIntroPosts = new ArrayList<>();
 
-  public void updateUniversity(String university) {
-    this.university = university;
-  }
-  public void updateStatus(MemberStatus status) {
-    this.status = status;
-  }
+  private Integer totalLikes;
 
-  public void setNotificationStatus(Boolean isNotificationsEnabled) {
-    this.isNotificationsEnabled = isNotificationsEnabled;
+  private Boolean infoPopupVisible;
+
+  public static Member toEntity(CreateMemberRequest request) {
+    return Member.builder()
+        .nickname(request.getNickName())
+        .birthDate(request.getBirthDate())
+        .profileImageUrl(null)
+        .role(MemberRole.ROLE_USER)
+        .university(request.getUniversity())
+        .isUniversityVisible(request.getIsUniversityVisible())
+        .status(MemberStatus.ACTIVE)
+        .isNotiEnabled(request.getIsNotiEnabled())
+        .favoritePopularGames(new ArrayList<>())
+        .favoriteCreativeGames(new ArrayList<>())
+        .favoriteIntroPosts(new ArrayList<>())
+        .totalLikes(0)
+        .infoPopupVisible(true)
+        .isDeleted(false)
+        .build();
   }
 
   public void addFavoritePopularGame(String postId) {
@@ -91,15 +105,15 @@ public class Member extends BaseMember {
     favoriteIntroPosts.remove(postId);
   }
 
-
-  public void updateFromRequest(MemberDto memberDto) {
-    this.university = memberDto.getUniversity();
-    this.isUniversityVisible = memberDto.isUniversityVisible();
-    this.status = memberDto.getStatus();
-    this.isNotificationsEnabled = memberDto.getIsNotificationsEnabled();
-    this.favoritePopularGames = new ArrayList<>(memberDto.getFavoritePopularGames());
-    this.favoriteCreativeGames = new ArrayList<>(memberDto.getFavoriteCreativeGames());
-    this.favoriteIntroPosts = new ArrayList<>(memberDto.getFavoriteIntroPosts());
+  public String getNickNameFromBaseMember(){
+    return super.getNickname();
   }
 
+  public void updateFromRequest(CompleteRegistrationRequest request) {
+    super.setNickname(request.getNickName());
+    super.setBirthDate(request.getBirthDate());
+    this.university = request.getUniversity();
+    this.isUniversityVisible = request.getIsUniversityVisible();
+    this.isNotiEnabled = request.getIsNotiEnabled();
+  }
 }
