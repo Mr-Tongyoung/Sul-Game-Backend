@@ -3,13 +3,14 @@ package org.sejong.sulgamewiki.util.config;
 import java.util.Arrays;
 import java.util.Collections;
 import lombok.RequiredArgsConstructor;
-import org.sejong.sulgamewiki.util.auth.service.CustomOAuth2UserService;
+import org.sejong.sulgamewiki.util.auth.CustomOAuth2UserService;
 import org.sejong.sulgamewiki.util.JwtUtil;
-import org.sejong.sulgamewiki.util.auth.handler.OAuth2SuccessHandler;
+import org.sejong.sulgamewiki.util.auth.OAuth2MemberSuccessHandler;
 import org.sejong.sulgamewiki.util.TokenAuthenticationFilter;
 import org.sejong.sulgamewiki.service.MemberService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -31,20 +32,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class WebSecurityConfig {
   private final JwtUtil jwtUtil;
-  private final OAuth2SuccessHandler oAuth2SuccessHandler;
+  private final OAuth2MemberSuccessHandler oAuth2MemberSuccessHandler;
   private final CustomOAuth2UserService customOAuth2UserService;
 
   private static final String[] AUTH_WHITELIST = {
       "/", // 기본화면
-      "/api/**", //FIXME: 일시적으로 전체 API 주소 허용 (삭제해야함)
-      "/api/signup", // 회원가입
-      "/api/login", // 로그인
-      "/login/**",
-      "/signup",
       "/docs/**", // Swagger
+      "/favicon.ico", // 앱아이콘
+      "/api/test/**", // 테스트 API
       "/v3/api-docs/**", // Swagger
-      "/login/oauth2/code/google", // OAuth 리디렉션 URI
-      "/api/members/complete-registration"
+      "/login", // OAuth 관리페이지
+      "/login/oauth2/code/**", // OAuth 리다이렉션
+      "/oauth2/authorization/**" // OAuth 로그인 페이지
   };
 
   private static final String[] ALLOWED_ORIGINS = {
@@ -65,28 +64,32 @@ public class WebSecurityConfig {
     return
         http.cors(cors -> cors
                 .configurationSource(corsConfigurationSource()))
-
             .csrf(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests((authorize) -> authorize
                 .requestMatchers(AUTH_WHITELIST).permitAll()
-//                .requestMatchers(HttpMethod.GET, "/api/my-page").hasRole("USER") //FIXME: 예시 페이지
+                .requestMatchers(HttpMethod.POST, "/api/members/complete-registration").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/profile").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/liked-posts").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/bookmarked-posts").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/profile-image").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/nickname").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/notification").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/members/check-nickname").hasRole("USER")
+                .requestMatchers(HttpMethod.POST, "/api/intro").hasRole("USER")
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo
-                    .userService(customOAuth2UserService)
-                )
-                .successHandler(oAuth2SuccessHandler)
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .successHandler(oAuth2MemberSuccessHandler)
             )
             .logout(logout -> logout
                 .logoutSuccessUrl("/")
                 .invalidateHttpSession(true)
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(new TokenAuthenticationFilter(jwtUtil),
-                UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new TokenAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
             .build();
   }
 

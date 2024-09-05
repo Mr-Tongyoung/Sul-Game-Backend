@@ -1,14 +1,18 @@
 package org.sejong.sulgamewiki.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.sejong.sulgamewiki.util.log.LogMonitoringInvocation;
 import org.sejong.sulgamewiki.object.MemberCommand;
 import org.sejong.sulgamewiki.object.MemberDto;
 import org.sejong.sulgamewiki.service.MemberService;
+import org.sejong.sulgamewiki.util.auth.CustomUserDetails;
+import org.sejong.sulgamewiki.util.log.LogMonitoringInvocation;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,41 +20,92 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
 @Slf4j
-public class MemberController {
+@Tag(
+    name = "회원 관리 API",
+    description = "회원 관리 API 제공"
+)
+public class MemberController implements MemberControllerDocs{
+
   private final MemberService memberService;
 
-  @PostMapping// TODO: 이대로 수정하기
-  @LogMonitoringInvocation
-  public ResponseEntity<MemberDto> createMember(
-      @RequestBody MemberCommand memberCommand) {
-
-    MemberDto memberDto
-        = memberService.createMember(memberCommand);
-    return ResponseEntity.ok(memberDto);
-  }
-
-  @PostMapping("/complete-registration")
+  @PostMapping(value = "/complete-registration" , consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
   @LogMonitoringInvocation
   public ResponseEntity<MemberDto> completeRegistration(
-       @RequestBody MemberCommand memberCommand
-  ){
-    MemberDto memberDto = memberService.completeRegistration(memberCommand);
-    return ResponseEntity.ok(memberDto);
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.completeRegistration(command));
   }
 
-//
-//  @GetMapping("/{id}")
-//  public ResponseEntity<CreaeteMemberResponse> getMember(
-//      @PathVariable Long id) {
-//    CreaeteMemberResponse creaeteMemberResponse
-//        = memberService.getMemberById(id);
-//    return ResponseEntity.ok(creaeteMemberResponse);
-//  }
-//
-//  @DeleteMapping("/{id}")
-//  public ResponseEntity<Void> deleteMember(@PathVariable Long id) {
-//    memberService.deleteMember(id);
-//    return ResponseEntity.noContent().build();
-//  }
+  @PostMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> getProfile(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails, //String memberId
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.getProfile(command));
+  }
 
+  @PostMapping(value = "/liked-posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> getLikedPosts(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.getLikedPosts(command));
+  }
+
+
+  @PostMapping(value = "/bookmarked-posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> getBookmarkedPosts(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.getBookmarkedPosts(command));
+  }
+
+  @PostMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> updateMemberProfileImage(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.updateMemberProfileImage(command));
+  }
+
+  @PostMapping(value = "/nickname", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> changeNickname(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.changeNickname(command));
+  }
+
+  @PostMapping(value = "/notification", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> changeNotificationSetting(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.changeNotificationSetting(command));
+  }
+
+  @PostMapping(value = "/check-nickname", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Override
+  @LogMonitoringInvocation
+  public ResponseEntity<MemberDto> checkDuplicateNickname(
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @ModelAttribute MemberCommand command) {
+    command.setMemberId(Long.parseLong(customUserDetails.getUsername()));
+    return ResponseEntity.ok(memberService.isDuplicationNickname(command));
+  }
 }

@@ -11,9 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.ManyToOne;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -23,6 +22,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import org.sejong.sulgamewiki.object.constants.SourceType;
 import org.sejong.sulgamewiki.util.exception.CustomException;
 import org.sejong.sulgamewiki.util.exception.ErrorCode;
 
@@ -44,6 +44,9 @@ public abstract class BasePost extends BaseTimeEntity {
   @Column(length = 100)
   private String title;
 
+  @Column(length = 90)
+  private String introduction;
+
   @Column(length = 500)
   private String description;
 
@@ -63,6 +66,24 @@ public abstract class BasePost extends BaseTimeEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   private Member member;
 
+  @Builder.Default
+  private int dailyScore = 0;  // 하루마다 초기화
+
+  @Builder.Default
+  private int weeklyScore = 0;  // 매주 일요일마다 초기화
+
+  private SourceType sourceType;
+
+  // TODO: 썸네일 정해지면 ENUM타입 생성하기
+  // 썸네일 아이콘 선택 필드
+  @Column(length = 255)
+  private String thumbnailIcon;
+
+  // 내 정보 공개 여부 필드
+  @Builder.Default
+  private boolean isCreatorInfoPrivate = true; // 기본값은 비공개
+
+
   public void cancelLike(Long memberId) {
     if(this.likedMemberIds.contains(memberId)) {
       throw new CustomException(ErrorCode.NO_LIKE_TO_CANCEL);
@@ -80,5 +101,26 @@ public abstract class BasePost extends BaseTimeEntity {
     this.likedMemberIds.add(memberId);
   }
 
+  // 실시간 점수 증가
+  public void increaseDailyScore(int score) {
+    this.dailyScore += score;
+  }
 
-}
+  // 오늘의 점수 증가
+  public void increaseWeeklyScore(int score) {
+    this.weeklyScore += score;
+  }
+
+  // 점수 초기화 로직
+  public void resetDailyScore() {
+    this.dailyScore = 0;
+  }
+
+  public void resetWeeklyScore() {
+    this.weeklyScore = 0;
+  }
+
+  public static Boolean checkCreatorInfoIsPrivate(Boolean info) {
+    return Optional.ofNullable(info).orElse(true);
+  }
+ }
