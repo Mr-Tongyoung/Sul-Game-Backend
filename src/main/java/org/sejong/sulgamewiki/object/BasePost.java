@@ -10,7 +10,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.validation.constraints.Size;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -22,6 +24,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.slf4j.Slf4j;
+import org.sejong.sulgamewiki.object.constants.ScoreRule;
 import org.sejong.sulgamewiki.object.constants.SourceType;
 import org.sejong.sulgamewiki.util.exception.CustomException;
 import org.sejong.sulgamewiki.util.exception.ErrorCode;
@@ -35,19 +39,26 @@ import org.sejong.sulgamewiki.util.exception.ErrorCode;
 @AllArgsConstructor
 @SuperBuilder
 @DiscriminatorColumn(name = "dtype")
+@Slf4j
 public abstract class BasePost extends BaseTimeEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long basePostId;
 
+  // 20
   @Column(length = 100)
+  @Size(max = 20, message = "제목 20자 제한")
   private String title;
 
-  @Column(length = 90)
+  // 20
+  @Column(length = 100)
+  @Size(max = 20, message = "소개 20자 제한")
   private String introduction;
 
-  @Column(length = 500)
+  // 1000
+  @Lob
+  @Size(max = 1000, message = "설명 1000자 제한")
   private String description;
 
   @Builder.Default
@@ -72,6 +83,12 @@ public abstract class BasePost extends BaseTimeEntity {
   @Builder.Default
   private int weeklyScore = 0;  // 매주 일요일마다 초기화
 
+  @Builder.Default
+  private int totalScore = 0;   // 초기화 x
+
+  @Builder.Default
+  private int commentCount = 0;
+
   private SourceType sourceType;
 
   // TODO: 썸네일 정해지면 ENUM타입 생성하기
@@ -79,13 +96,22 @@ public abstract class BasePost extends BaseTimeEntity {
   @Column(length = 255)
   private String thumbnailIcon;
 
+
   // 내 정보 공개 여부 필드
   @Builder.Default
-  private boolean isCreatorInfoPrivate = true; // 기본값은 비공개
+  private boolean isCreatorInfoPrivate = false; // 기본값은 공개
 
+
+  public void postLike(Long memberId){
+    if(this.likedMemberIds.contains(memberId)){
+      cancelLike(memberId);
+    } else if (!this.likedMemberIds.contains(memberId)) {
+      upLike(memberId);
+    }
+  }
 
   public void cancelLike(Long memberId) {
-    if(this.likedMemberIds.contains(memberId)) {
+    if(!this.likedMemberIds.contains(memberId)) {
       throw new CustomException(ErrorCode.NO_LIKE_TO_CANCEL);
     }
     if (likes > 0) {
@@ -97,16 +123,32 @@ public abstract class BasePost extends BaseTimeEntity {
   }
 
   public void upLike(Long memberId) {
+    if(this.likedMemberIds.contains(memberId)) {
+      throw new CustomException(ErrorCode.ALREADY_LIKED);
+    }
     likes++;
     this.likedMemberIds.add(memberId);
   }
 
-  // 실시간 점수 증가
+
+  public void updateScore(ScoreRule scoreRule){
+    increaseDailyScore(scoreRule.getScore());
+    increaseWeeklyScore(scoreRule.getScore());
+
+    log.info("[ 스코어 SCORE ] 게시물 {}에 {}점 부여 (사유: {})", basePostId,
+        scoreRule.getScore(), scoreRule.getDescription());
+  }
+
+  public void increaseCommentCount(){this.commentCount++;}
+
+  public void decreaseCommentCount(){this.commentCount--;}
+
+  // 데일리 점수 증가
   public void increaseDailyScore(int score) {
     this.dailyScore += score;
   }
 
-  // 오늘의 점수 증가
+  // 위클리 점수 증가
   public void increaseWeeklyScore(int score) {
     this.weeklyScore += score;
   }
@@ -120,7 +162,7 @@ public abstract class BasePost extends BaseTimeEntity {
     this.weeklyScore = 0;
   }
 
-  public static Boolean checkCreatorInfoIsPrivate(Boolean info) {
-    return Optional.ofNullable(info).orElse(true);
+  public static Boolean checkCreatorInfoIsPrivate(Boolean isCreatorInfoPrivate) {
+    return Optional.ofNullable(isCreatorInfoPrivate).orElse(false);
   }
  }

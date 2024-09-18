@@ -23,7 +23,8 @@ public class BasePostCommand {
   private SourceType sourceType;
   private BasePost basePost;
   private String thumbnailIcon;
-  private Boolean creatorInfoIsPrivate;
+  private Boolean isLiked;
+  private Boolean isBookmarked;
 
   // official, creation
   private String introduction;
@@ -33,8 +34,12 @@ public class BasePostCommand {
   private List<MultipartFile> gameMultipartFiles = new ArrayList<>();
   private List<String> imageUrls;
   private Set<GameTag> gameTags;
+  private String introLyricsInGame;
+  private MultipartFile introMultipartFileInGame;
+  private String IntroMediaUrlFromGame;
 
   // creation, intro
+  private Boolean isCreatorInfoPrivate;
   private Long relatedOfficialGameId;
 
   // intro

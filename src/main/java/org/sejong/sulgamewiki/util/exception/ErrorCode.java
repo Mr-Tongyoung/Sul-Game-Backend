@@ -17,6 +17,8 @@ public enum ErrorCode {
 
   LIKE_CANNOT_BE_UNDER_ZERO(HttpStatus.BAD_REQUEST, "좋아요는 0보다 작을수 없습니다."),
 
+  ALREADY_LIKED(HttpStatus.BAD_REQUEST, "좋아요는 한번만 누를 수 있습니다."),
+
   NO_LIKE_TO_CANCEL(HttpStatus.BAD_REQUEST, "좋아요를 누르지 않은 회원입니다."),
 
   POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글이 존재하지 않습니다."),
@@ -26,6 +28,8 @@ public enum ErrorCode {
   // Member
 
   MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원이 존재하지 않습니다."),
+
+  MEMBER_INTERACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "회원 활동 정보가 존재하지 않습니다."),
 
   INVALID_ACCOUNT_STATUS(HttpStatus.BAD_REQUEST, "회원 상태가 정상이 아닙니다."),
 
@@ -41,6 +45,13 @@ public enum ErrorCode {
 
   GAME_NOT_FOUND(HttpStatus.NOT_FOUND, "게임이 존재하지 않습니다."),
 
+  INVALID_GAME_INTRO_MEDIA_TYPE(HttpStatus.NOT_FOUND, "존재하지 않는 게임의 인트로 미디어 타입입니다."),
+
+  // Tag
+
+  TAG_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "태그는 최대 4개까지 가능합니다."),
+
+
   // Comment
   COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글이 존재하지 않습니다."),
 
@@ -54,6 +65,8 @@ public enum ErrorCode {
   // Auth
 
   INVALID_REGISTRATION_ID(HttpStatus.BAD_REQUEST, "소셜 로그인 제공자를 알수 없습니다"),
+
+  INVALID_REFRESH_TOKEN(HttpStatus.BAD_REQUEST, "리프래쉬 토큰이 유효하지않습니다."),
 
   // Notification
 

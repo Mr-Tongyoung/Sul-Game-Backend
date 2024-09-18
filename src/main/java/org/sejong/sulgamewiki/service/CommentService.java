@@ -1,18 +1,18 @@
 package org.sejong.sulgamewiki.service;
 
-import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.sejong.sulgamewiki.object.BasePost;
 import org.sejong.sulgamewiki.object.Comment;
 import org.sejong.sulgamewiki.object.CommentCommand;
 import org.sejong.sulgamewiki.object.CommentDto;
 import org.sejong.sulgamewiki.object.Member;
-import org.sejong.sulgamewiki.object.ReportCommand;
-import org.sejong.sulgamewiki.object.constants.ReportType;
-import org.sejong.sulgamewiki.object.constants.SourceType;
+import org.sejong.sulgamewiki.object.MemberInteraction;
+import org.sejong.sulgamewiki.object.constants.ExpRule;
+import org.sejong.sulgamewiki.object.constants.ScoreRule;
 import org.sejong.sulgamewiki.repository.BasePostRepository;
 import org.sejong.sulgamewiki.repository.CommentRepository;
+import org.sejong.sulgamewiki.repository.MemberInteractionRepository;
 import org.sejong.sulgamewiki.repository.MemberRepository;
 import org.sejong.sulgamewiki.util.exception.CustomException;
 import org.sejong.sulgamewiki.util.exception.ErrorCode;
@@ -25,12 +25,17 @@ public class CommentService {
   private final MemberRepository memberRepository;
   private final BasePostRepository basePostRepository;
   private final CommentRepository commentRepository;
-  private final ReportService reportService;
+  private final MemberInteractionRepository memberInteractionRepository;
+  private final ExpManagerService expManagerService;
 
   public CommentDto createComment(CommentCommand command) {
 
     Member member = memberRepository.findById(command.getMemberId())
         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
+    // 사용자 Interaction 정보 가져오기
+    MemberInteraction interaction = memberInteractionRepository.findById(member.getMemberId())
+        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_INTERACTION_NOT_FOUND));
 
     BasePost basePost = basePostRepository.findById(command.getBasePostId())
         .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
@@ -41,10 +46,18 @@ public class CommentService {
         .basePost(basePost)
         .likeCount(0)
         .reportedCount(0)
-        .isEdited(false)
         .build();
 
     Comment savedComment = commentRepository.save(comment);
+
+    interaction.increaseCommentCount();
+
+    expManagerService.updateExp(member, ExpRule.COMMENT_CREATION);
+
+    basePost.updateScore(ScoreRule.WRITE_COMMENT);
+    basePost.increaseCommentCount();
+
+    basePostRepository.save(basePost);
 
     return CommentDto.builder()
         .comment(savedComment)
@@ -52,14 +65,33 @@ public class CommentService {
   }
 
   public void deleteComment(CommentCommand command) {
+
+    Member member = memberRepository.findById(command.getMemberId())
+        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
+
     Comment comment = commentRepository.findById(command.getCommentId())
         .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+
+    BasePost basePost = basePostRepository.findById(command.getBasePostId())
+        .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+
+    // 사용자 Interaction 정보 가져오기
+    MemberInteraction interaction = memberInteractionRepository.findById(member.getMemberId())
+        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_INTERACTION_NOT_FOUND));
 
     // 댓글 작성자가 요청한 사용자인지 확인
     if (!comment.getMember().getMemberId().equals(command.getMemberId())) {
       throw new CustomException(ErrorCode.COMMENT_NOT_OWNED_BY_USER);
     }
     commentRepository.deleteById(comment.getCommentId());
+
+    interaction.decreaseCommentCount();
+
+    expManagerService.updateExp(member, ExpRule.COMMENT_DELETION);
+
+    basePost.updateScore(ScoreRule.DELETE_COMMENT);
+    basePost.decreaseCommentCount();
+    basePostRepository.save(basePost);
   }
 
   public CommentDto getComment(CommentCommand command) {
@@ -72,6 +104,10 @@ public class CommentService {
   }
 
   public CommentDto updateComment(CommentCommand command) {
+
+    BasePost basePost = basePostRepository.findById(command.getBasePostId())
+        .orElseThrow(() -> new CustomException(ErrorCode.POST_NOT_FOUND));
+
     Comment comment = commentRepository.findById(command.getCommentId())
         .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
 
@@ -81,7 +117,7 @@ public class CommentService {
     }
 
     comment.setContent(command.getContent());
-    comment.setEdited(true);
+    comment.markAsUpdated();
 
     Comment updatedComment = commentRepository.save(comment);
 
@@ -89,19 +125,4 @@ public class CommentService {
         .comment(updatedComment)
         .build();
   }
-
-  public void reportComment(Long commentId, Long memberId, ReportType reportType) {
-    Comment comment = commentRepository.findById(commentId)
-        .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
-
-    ReportCommand command = ReportCommand.builder()
-        .memberId(memberId)
-        .sourceId(commentId)
-        .sourceType(SourceType.COMMENT)
-        .reportType(reportType)
-        .build();
-
-    reportService.reportComment(command);
-  }
-
 }
